@@ -63,6 +63,21 @@ APK 输出位置:`app/build/outputs/apk/debug/app-debug.apk`
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
+### CI 自动构建与发布
+
+仓库配置了 GitHub Actions(`.github/workflows/build.yml`):
+
+- **push 到 main / PR / 手动触发**:自动构建 debug APK,在 Actions 运行页面的 Artifacts 中下载;
+- **推送 `v*` 标签**:自动构建并创建 **GitHub Release**,标题带版本号与构建日期(如 `v1.2 · 2026-11-05`),附 `Blacklist-v版本-日期.apk`(debug 签名,可直接安装)。
+
+发版步骤:
+
+```bash
+# 1. 修改 app/build.gradle.kts 中的 versionName / versionCode 并提交
+git tag v1.3
+git push origin v1.3
+```
+
 ## 使用步骤
 
 ### 1. 激活设备管理员
