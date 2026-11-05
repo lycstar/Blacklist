@@ -1,0 +1,9 @@
+# 统一换行符:脚本类文件必须保持固定换行,否则跨平台会出错
+* text=auto
+
+*.sh text eol=lf
+*.bat text eol=crlf
+gradlew text eol=lf
+*.png binary
+*.webp binary
+*.jar binary

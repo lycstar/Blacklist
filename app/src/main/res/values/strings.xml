@@ -1,0 +1,98 @@
+<resources>
+    <string name="app_name">应用黑名单</string>
+
+    <!-- 设备管理员 -->
+    <string name="device_admin">应用黑名单 - 设备管理员</string>
+    <string name="device_admin_description">激活后可配合设备所有者权限隐藏(禁用)指定应用</string>
+    <string name="admin_explanation">需要授予设备管理员权限。隐藏应用功能还需将本应用设置为设备所有者(Device Owner),详见项目 README。</string>
+    <string name="admin_toast_enabled">设备管理员已激活</string>
+    <string name="admin_toast_disabled">设备管理员已停用</string>
+    <string name="admin_disable_warning">停用设备管理员后,应用隐藏/恢复功能将无法使用。确定要停用吗?</string>
+
+    <!-- 主界面 -->
+    <string name="app_subtitle">通过设备管理员与设备所有者权限隐藏指定应用</string>
+    <string name="section_permission">权限状态</string>
+    <string name="perm_admin">设备管理员</string>
+    <string name="perm_owner">设备所有者</string>
+    <string name="status_active">已激活</string>
+    <string name="status_inactive">未激活</string>
+    <string name="status_yes">是</string>
+    <string name="status_no">否</string>
+    <string name="owner_hint_ok">已具备隐藏/恢复应用所需的全部权限</string>
+    <string name="owner_hint_no">隐藏应用需要设备所有者权限,请先用 adb 设置:adb shell dpm set-device-owner cc.lycstar.admin/.MyAdmin</string>
+    <string name="action_grant_admin">授予管理员权限</string>
+    <string name="action_disable_admin">停用管理员权限</string>
+
+    <string name="section_target">目标应用</string>
+    <string name="pkg_hint">输入包名,如 com.example.app</string>
+    <string name="pkg_pick">选择应用</string>
+    <string name="pkg_status_hint">输入或选择包名后,此处显示该应用的安装与隐藏状态</string>
+    <string name="pkg_status_not_installed">%1$s 未安装在该设备上(仍可预先设置隐藏,安装后自动生效)</string>
+    <string name="pkg_status_hidden_normal">已安装,当前处于隐藏状态(桌面图标已移除)</string>
+    <string name="pkg_status_shown_normal">已安装,当前正常显示</string>
+    <string name="pkg_status_unknown">已安装;隐藏状态未知(需要设备所有者权限)</string>
+    <string name="action_hide">禁用(隐藏)</string>
+    <string name="action_unhide">恢复(取消隐藏)</string>
+
+    <string name="section_hidden">已隐藏应用</string>
+    <string name="hidden_count">共 %1$d 个</string>
+    <string name="hidden_empty">暂无隐藏应用</string>
+    <string name="hidden_tag">隐藏中</string>
+    <string name="hidden_tag_shown">已显示</string>
+    <string name="hidden_tag_unverified">未验证</string>
+    <string name="label_with_system_tag">%1$s(系统)</string>
+    <string name="action_restore">恢复</string>
+
+    <!-- 初始化向导 -->
+    <string name="setup_title">初始化设置</string>
+    <string name="setup_subtitle">按步骤完成授权后,即可开始隐藏应用</string>
+    <string name="setup_step1_title">第 1 步:激活设备管理员</string>
+    <string name="setup_step1_desc">点击下方按钮,在系统弹窗中确认激活。仅用于基础授权,随时可在设置中停用。</string>
+    <string name="setup_step1_done">✓ 已激活设备管理员</string>
+    <string name="setup_step2_title">第 2 步:授权设备所有者(需电脑)</string>
+    <string name="setup_step2_desc">隐藏应用必须由「设备所有者」身份执行。请先完成下面两项准备:</string>
+    <string name="setup_prereq_debug">手机:进入 设置 → 开发者选项 → 打开「USB 调试」</string>
+    <string name="setup_prereq_connect">电脑:用数据线连接手机,首次连接需在手机上允许 USB 调试</string>
+    <string name="setup_way_script_title">方式一(推荐):一键授权脚本</string>
+    <string name="setup_script_win_usage">导出 setup-device-owner.bat,保存后双击运行(电脑需已安装 adb;若设备尚未安装本应用,可执行 setup-device-owner.bat APK路径 自动安装)</string>
+    <string name="setup_script_unix_usage">导出 setup-device-owner.sh,保存后在终端执行:chmod +x setup-device-owner.sh &amp;&amp; ./setup-device-owner.sh</string>
+    <string name="setup_action_export">导出脚本</string>
+    <string name="setup_way_cmd_title">方式二:手动执行命令</string>
+    <string name="setup_action_copy">复制命令</string>
+    <string name="setup_toast_copied">已复制到剪贴板</string>
+    <string name="setup_toast_export_ok">脚本已保存</string>
+    <string name="setup_toast_export_fail">保存失败,请重试</string>
+    <string name="setup_step3_title">第 3 步:确认授权状态</string>
+    <string name="setup_step3_desc">从电脑操作完成后回到本页面会自动检测;也可手动点击「重新检测」。两项都通过后自动进入主界面。</string>
+    <string name="setup_action_detect">重新检测</string>
+    <string name="setup_action_skip">跳过,稍后再设置</string>
+    <string name="setup_close">关闭</string>
+    <string name="main_open_setup">查看初始化指南</string>
+    <string name="setup_compat_title">机型兼容性提示(重要)</string>
+    <string name="setup_compat_dual_app">设备所有者与「应用双开」「手机分身 / 系统分身」「访客模式」等多用户功能冲突:设置前请先关闭它们,设置后这些功能可能无法使用(因机型/系统而异)。介意者请勿设置设备所有者。</string>
+    <string name="setup_compat_miui">小米 / MIUI 额外要求:① 退出小米账号及全部账户;② 删除锁屏密码;③ 开发者选项中开启「USB 调试(安全设置)」;④ 设置期间关闭「MIUI 优化」(成功后可重新打开)。</string>
+    <string name="setup_compat_other">部分机型(如索尼)需移除 SIM 卡后才能设置成功;详见项目 README「机型兼容性说明」。</string>
+
+    <!-- 应用选择对话框 -->
+    <string name="dialog_picker_title">选择应用</string>
+    <string name="dialog_picker_search_hint">搜索应用名称或包名</string>
+
+    <!-- 对话框 -->
+    <string name="dialog_disable_admin_title">停用设备管理员</string>
+    <string name="dialog_disable_admin_msg">停用后将无法隐藏/恢复应用,已隐藏的应用记录会保留。确定停用吗?</string>
+    <string name="action_confirm">确定</string>
+    <string name="action_cancel">取消</string>
+
+    <!-- Toast -->
+    <string name="toast_admin_granted">设备管理员权限已授予</string>
+    <string name="toast_admin_denied">未授予设备管理员权限</string>
+    <string name="toast_admin_removed">设备管理员已停用</string>
+    <string name="toast_need_admin">尚未激活设备管理员权限</string>
+    <string name="toast_need_device_owner">操作失败:需要设备所有者(Device Owner)权限</string>
+    <string name="toast_pkg_empty">请先输入或选择包名</string>
+    <string name="toast_self_hide_denied">不能隐藏本应用,否则将无法再恢复其他应用</string>
+    <string name="toast_hide_success">已隐藏 %1$s</string>
+    <string name="toast_unhide_success">已恢复显示 %1$s</string>
+    <string name="toast_op_failed">操作失败:%1$s</string>
+    <string name="toast_no_apps">未能读取到已安装应用列表</string>
+</resources>
