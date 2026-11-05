@@ -165,11 +165,15 @@ class BlacklistViewModel(application: Application) : AndroidViewModel(applicatio
     /**
      * 重建统一应用列表:已安装应用 + 仅存在于本地隐藏记录中的包(已卸载但被预设置隐藏)。
      * 包含数百个应用的标签读取与 DPM 状态查询,放到后台线程执行。
+     *
+     * 注意:后台线程禁止读取任何 Compose 状态(它们可能诞生于尚未 apply 的组合快照),
+     * 因此权限标志先在主线程读取为普通参数再传入。
      */
     private fun rebuildApps() {
+        val canVerify = adminActive && deviceOwner
         loading = true
         viewModelScope.launch(Dispatchers.Default) {
-            val list = computeApps()
+            val list = computeApps(canVerify)
             withContext(Dispatchers.Main) {
                 apps = list
                 loading = false
@@ -177,10 +181,9 @@ class BlacklistViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    private fun computeApps(): List<AppInfo> {
+    private fun computeApps(canVerify: Boolean): List<AppInfo> {
         val app = getApplication<Application>()
         val pm = app.packageManager
-        val canVerify = adminActive && deviceOwner
         val saved = prefs.getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
 
         val installed = pm.getInstalledApplications(0)

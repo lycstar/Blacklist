@@ -20,12 +20,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 在组合开始前强制初始化 ViewModel,避免其 Compose 状态诞生于组合快照中
+        val vm = viewModel
         setContent {
             BlacklistTheme {
                 AppRoot(
-                    viewModel = viewModel,
+                    viewModel = vm,
                     onAdminFlowRequested = {
-                        adminRequestLauncher.launch(viewModel.adminRequestIntent())
+                        adminRequestLauncher.launch(vm.adminRequestIntent())
                     },
                 )
             }
