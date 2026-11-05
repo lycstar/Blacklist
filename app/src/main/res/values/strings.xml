@@ -35,8 +35,8 @@
     <string name="setup_close">关闭</string>
     <string name="setup_compat_title">机型兼容性提示(重要)</string>
     <string name="setup_compat_dual_app">设备所有者与「应用双开」「手机分身 / 系统分身」「访客模式」等多用户功能冲突:设置前请先关闭它们,设置后这些功能可能无法使用(因机型/系统而异)。介意者请勿设置设备所有者。</string>
-    <string name="setup_compat_miui">小米 / MIUI 额外要求:① 退出小米账号及全部账户;② 删除锁屏密码;③ 开发者选项中开启「USB 调试(安全设置)」;④ 设置期间关闭「MIUI 优化」(成功后可重新打开)。</string>
-    <string name="setup_compat_other">部分机型(如索尼)需移除 SIM 卡后才能设置成功;详见项目 README「机型兼容性说明」。</string>
+    <string name="setup_compat_miui">实测小米 14:只需退出登录小米账号,并移除「设置 → 账号与同步」中的全部账户即可,无需其他操作。</string>
+    <string name="setup_compat_other">不同机型 / 系统版本可能存在差异;如遇失败,欢迎到项目仓库反馈实测信息。</string>
 
     <!-- 主界面:应用列表 -->
     <string name="main_banner_setup">授权未完成,点击继续初始化设置</string>

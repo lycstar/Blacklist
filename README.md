@@ -96,30 +96,27 @@ adb shell dpm set-device-owner cc.lycstar.admin/.MyAdmin
 
 | 报错 | 原因与解决 |
 |---|---|
-| `Not allowed to set the device owner because there are already some accounts on the device` | 设备上存在账户,先移除全部账户(MIUI 还需删除锁屏密码);实在不行恢复出厂后再试 |
+| `Not allowed to set the device owner because there are already some accounts on the device` / `Calling identity is not authorized` | 设备上存在账户(实测小米 14:退出小米账号 + 移除「账号与同步」中所有账户即可);实在不行恢复出厂后再试 |
 | `Not allowed to set the device owner because there are already multiple users on the device` | 移除多用户/访客/手机分身/应用双开产生的用户后再试 |
 | `Trying to set device owner but device already has a device owner` | 已有其他设备所有者,需先解除或恢复出厂 |
 | 模拟器/MIUI 等定制系统失败 | 见下方「机型兼容性说明」,MIUI 有额外前置步骤 |
 
-### 机型兼容性说明(MIUI / 双开 / 分身等)
+### 机型兼容性说明(实测:小米 14)
 
-**⚠️ 应用双开、手机分身/系统分身与设备所有者冲突(重要弊端)**
+**小米 14 实测**:设置设备所有者前只需两步——
 
-- MIUI 的「应用双开」在底层是一个受管理的影子用户(userId 999),「手机分身/系统分身」则是第二个系统用户;而 `set-device-owner` 要求设备处于"干净"的单用户、无账户状态。
-- 因此:**设置前请先关闭应用双开、手机分身、访客模式等多用户功能**;设置设备所有者后,这些功能在部分机型上会无法使用。介意此限制的话请勿设置设备所有者。
-- 一台设备同时只能有一个设备所有者/激活的设备管理员:如果你已经设置过其他同类设备管理工具,需要先移除它们的管理员才能设置本应用。
+1. **退出登录小米账号**
+2. 进入「设置 → 账号与同步」,**移除其中所有账户**
 
-**小米 / MIUI 额外前置步骤**(逐项确认,任何一项没做都可能失败):
+完成后直接执行 `adb shell dpm set-device-owner cc.lycstar.admin/.MyAdmin` 即可成功。无需删除锁屏密码、无需关闭 MIUI 优化、无需其他操作(社区流传的这些步骤在小米 14 上实测均不需要)。
 
-1. 开发者选项中开启「**USB 调试(安全设置)**」
-2. 退出小米账号,以及「设置 → 账户」中的全部账户
-3. 删除锁屏密码
-4. 关闭「应用双开」「手机分身」
-5. 开发者选项中关闭「**MIUI 优化**」——注意:关闭 MIUI 优化本身会带来一些副作用(如分享面板选不到双开应用),**设置成功后可以重新打开 MIUI 优化**,不影响已生效的设备所有者
+**⚠️ 应用双开、手机分身 / 系统分身与设备所有者冲突(实测)**
 
-**其他机型**:部分机型(如索尼)需要移除 SIM 卡后才能设置成功。
+设置设备所有者后,「应用双开」「手机分身 / 系统分身」等多用户功能将无法使用,介意者请勿设置;设置前若已开启双开 / 分身,请先关闭。
 
-参考资料:[dpm 命令失败原因(CSDN)](https://blog.csdn.net/2401_84538391/article/details/138406843) · [MIUI 双开 userId 999 原理](https://bbs.oneplus.com/thread/5817716)
+**通用限制**:一台设备同时只能有一个设备所有者,如已激活其他同类设备管理工具,需先移除。
+
+> 其他机型 / 系统版本的实测差异,欢迎提交 issue 补充。
 
 ### 3. 隐藏应用
 
