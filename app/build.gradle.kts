@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,6 +13,29 @@ plugins {
 // 详细步骤见 README.md 的「Fork 后修改包名指南」。
 // =============================================================================
 val appId = "cc.lycstar.admin"
+
+// =============================================================================
+// 签名配置:CI 通过环境变量注入(GitHub Actions Secrets);本地通过 local.properties
+// (已被 .gitignore 忽略)配置。两者都没有时,release 构建不签名,不影响 debug 构建。
+// local.properties 示例:
+//   blacklist.storeFile=D:/path/to/blacklist.keystore
+//   blacklist.storePassword=xxxxxx
+//   blacklist.keyAlias=blacklist_key
+//   blacklist.keyPassword=xxxxxx
+// =============================================================================
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun signingValue(envKey: String, propKey: String): String? =
+    System.getenv(envKey) ?: localProps.getProperty(propKey)
+
+val releaseStoreFile = signingValue("SIGNING_KEYSTORE_FILE", "blacklist.storeFile")
+    ?.let { file(it) }?.takeIf { it.exists() }
+val releaseStorePassword = signingValue("SIGNING_STORE_PASSWORD", "blacklist.storePassword")
+val releaseKeyAlias = signingValue("SIGNING_KEY_ALIAS", "blacklist.keyAlias") ?: "blacklist_key"
+val releaseKeyPassword = signingValue("SIGNING_KEY_PASSWORD", "blacklist.keyPassword")
+    ?: releaseStorePassword
 
 android {
     namespace = appId
@@ -26,10 +51,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            if (releaseStoreFile != null) {
+                storeFile = releaseStoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (releaseStoreFile != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {

@@ -68,7 +68,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 仓库配置了 GitHub Actions(`.github/workflows/build.yml`):
 
 - **push 到 main / PR / 手动触发**:自动构建 debug APK,在 Actions 运行页面的 Artifacts 中下载;
-- **推送 `v*` 标签**:自动构建并创建 **GitHub Release**,标题带版本号与构建日期(如 `v1.2 · 2026-11-05`),附 `Blacklist-v版本-日期.apk`(debug 签名,可直接安装)。
+- **推送 `v*` 标签**:自动构建并创建 **GitHub Release**,标题带版本号与构建日期(如 `v1.2 · 2026-11-05`),附 `Blacklist-v版本-日期.apk`(统一密钥正式签名,可直接安装)。签名密钥通过 Actions Secrets 注入 CI,不进仓库;本地构建通过 `local.properties` 读取(见 `app/build.gradle.kts` 顶部注释)。
 
 发版步骤:
 
@@ -170,6 +170,8 @@ fork 后改成自己的包名只需四步(配置已集中到一处):
 4. **改 adb 命令中的组件名**:上文所有 `cc.lycstar.admin/.MyAdmin` 相应替换为新包名(`.MyAdmin` 部分不变)。
 
 > AndroidManifest 中 receiver 写的是相对类名 `.MyAdmin`,会自动跟随新的 `namespace`,不需要改 Manifest。
+>
+> 签名:Release APK 需要 `blacklist.keystore`(仓库不含密钥)。fork 者请自行生成(`keytool -genkeypair -alias blacklist_key -validity 10950 ...`)并配置到仓库 Secrets 或本地 `local.properties`,详见 `app/build.gradle.kts` 顶部注释;没有密钥时 CI 的 release 任务会失败,但 debug 构建不受影响。
 
 ## 技术栈
 
