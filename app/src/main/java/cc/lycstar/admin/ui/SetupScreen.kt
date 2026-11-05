@@ -1,10 +1,9 @@
 package cc.lycstar.admin.ui
 
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,14 +15,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,15 +39,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cc.lycstar.admin.BlacklistViewModel
 import cc.lycstar.admin.R
 
-private enum class SetupPlatform { Windows, Unix }
-
 /**
  * 初始化向导(Shizuku 风格):分步引导用户激活设备管理员、
- * 在电脑上授权设备所有者(一键脚本或手动命令),并自动检测授权结果。
+ * 在电脑上执行授权命令(复制按钮提供精确命令),并自动检测授权结果。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,23 +56,6 @@ fun SetupScreen(
     onClose: () -> Unit,
 ) {
     val context = LocalContext.current
-    var showDisableDialog by remember { mutableStateOf(false) }
-
-    var pendingAsset by rememberSaveable { mutableStateOf<String?>(null) }
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream")
-    ) { uri ->
-        val asset = pendingAsset
-        if (uri != null && asset != null) {
-            viewModel.exportAsset(asset, uri)
-        }
-    }
-    fun export(assetName: String, fileName: String) {
-        pendingAsset = assetName
-        exportLauncher.launch(fileName)
-    }
-
-    var platform by rememberSaveable { mutableStateOf(SetupPlatform.Windows) }
     val pkg = context.packageName
     val ownerCommand = "adb shell dpm set-device-owner $pkg/.MyAdmin"
     val clipboard = LocalClipboardManager.current
@@ -132,59 +112,15 @@ fun SetupScreen(
                 BulletText(stringResource(R.string.setup_prereq_connect))
                 Spacer(Modifier.height(12.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = platform == SetupPlatform.Windows,
-                        onClick = { platform = SetupPlatform.Windows },
-                        label = { Text("Windows") },
-                    )
-                    FilterChip(
-                        selected = platform == SetupPlatform.Unix,
-                        onClick = { platform = SetupPlatform.Unix },
-                        label = { Text("macOS / Linux / Git Bash") },
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
-
                 Text(
-                    text = stringResource(R.string.setup_way_script_title),
+                    text = stringResource(R.string.setup_command_title),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(
-                        if (platform == SetupPlatform.Windows) {
-                            R.string.setup_script_win_usage
-                        } else {
-                            R.string.setup_script_unix_usage
-                        }
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = {
-                        if (platform == SetupPlatform.Windows) {
-                            export("scripts/setup-device-owner.bat", "setup-device-owner.bat")
-                        } else {
-                            export("scripts/setup-device-owner.sh", "setup-device-owner.sh")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(R.string.setup_action_export)) }
-
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = stringResource(R.string.setup_way_cmd_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(8.dp))
                 CodeBox(text = ownerCommand)
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(
+                Button(
                     onClick = {
                         clipboard.setText(AnnotatedString(ownerCommand))
                         Toast.makeText(context, R.string.setup_toast_copied, Toast.LENGTH_SHORT).show()
@@ -240,29 +176,14 @@ fun SetupScreen(
             Spacer(Modifier.height(24.dp))
         }
     }
-
-    if (showDisableDialog) {
-        AlertDialog(
-            onDismissRequest = { showDisableDialog = false },
-            title = { Text(stringResource(R.string.dialog_disable_admin_title)) },
-            text = { Text(stringResource(R.string.dialog_disable_admin_msg)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDisableDialog = false
-                    viewModel.disableAdmin()
-                }) { Text(stringResource(R.string.action_confirm)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDisableDialog = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
 }
 
 @Composable
-private fun StepCard(step: Int, title: String, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+private fun StepCard(
+    step: Int,
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -289,7 +210,7 @@ private fun StepCard(step: Int, title: String, content: @Composable androidx.com
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -303,9 +224,7 @@ private fun CompatCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
     ) {
         Column(
             modifier = Modifier
@@ -315,7 +234,7 @@ private fun CompatCard() {
             Text(
                 text = stringResource(R.string.setup_compat_title),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
             )
             Spacer(Modifier.height(8.dp))
@@ -345,7 +264,7 @@ private fun StepDoneText(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyMedium,
-        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+        fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.primary,
     )
 }
@@ -370,7 +289,7 @@ private fun StatusRow(label: String, ok: Boolean, okText: String, badText: Strin
         Text(
             text = if (ok) okText else badText,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+            fontWeight = FontWeight.SemiBold,
             color = if (ok) {
                 MaterialTheme.colorScheme.primary
             } else {

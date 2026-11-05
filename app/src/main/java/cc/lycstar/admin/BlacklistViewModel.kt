@@ -13,15 +13,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-/** 目标应用的实时状态 */
-sealed interface TargetStatus {
-    data object Empty : TargetStatus
-    data class NotInstalled(val pkg: String) : TargetStatus
-    data object Hidden : TargetStatus
-    data object Shown : TargetStatus
-    data object Unknown : TargetStatus
-}
+/** 应用列表筛选条件 */
+enum class AppFilter { All, Hidden, Shown }
 
 class BlacklistViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -35,13 +33,18 @@ class BlacklistViewModel(application: Application) : AndroidViewModel(applicatio
         private set
     var deviceOwner by mutableStateOf(false)
         private set
-    var pkgInput by mutableStateOf("")
-        private set
-    var targetStatus by mutableStateOf<TargetStatus>(TargetStatus.Empty)
-        private set
-    var hiddenApps by mutableStateOf<List<AppInfo>>(emptyList())
-        private set
     var setupDismissed by mutableStateOf(false)
+        private set
+
+    /** 已安装应用 + 历史隐藏记录合并后的统一列表 */
+    var apps by mutableStateOf<List<AppInfo>>(emptyList())
+        private set
+    var loading by mutableStateOf(false)
+        private set
+
+    var query by mutableStateOf("")
+    var filter by mutableStateOf(AppFilter.All)
+    var selection by mutableStateOf<Set<String>>(emptySet())
         private set
 
     init {
@@ -49,7 +52,7 @@ class BlacklistViewModel(application: Application) : AndroidViewModel(applicatio
         refresh()
     }
 
-    /** 重新读取权限状态、目标应用状态与已隐藏列表 */
+    /** 重新读取权限状态并重建应用列表 */
     fun refresh() {
         adminActive = dpm.isAdminActive(admin)
         deviceOwner = try {
@@ -57,13 +60,19 @@ class BlacklistViewModel(application: Application) : AndroidViewModel(applicatio
         } catch (e: Exception) {
             false
         }
-        updateTargetStatus()
-        refreshHiddenList()
+        rebuildApps()
     }
 
-    fun onPkgChange(value: String) {
-        pkgInput = value
-        updateTargetStatus()
+    fun onQueryChange(value: String) {
+        query = value
+    }
+
+    fun toggleSelect(pkg: String) {
+        selection = if (pkg in selection) selection - pkg else selection + pkg
+    }
+
+    fun clearSelection() {
+        selection = emptySet()
     }
 
     /** 发起系统设备管理员授权页 */
@@ -88,47 +97,49 @@ class BlacklistViewModel(application: Application) : AndroidViewModel(applicatio
         prefs.edit().putBoolean(KEY_SETUP_DISMISSED, true).apply()
     }
 
-    /** 把内置脚本资产导出到用户选择的位置(.bat 自动转换为 CRLF 换行) */
-    fun exportAsset(assetName: String, uri: android.net.Uri) {
-        val app = getApplication<Application>()
-        try {
-            app.contentResolver.openOutputStream(uri)?.use { out ->
-                app.assets.open(assetName).use { input ->
-                    if (assetName.endsWith(".bat")) {
-                        val text = input.bufferedReader().readText()
-                            .replace("\r\n", "\n")
-                            .replace("\n", "\r\n")
-                        out.write(text.toByteArray(Charsets.UTF_8))
-                    } else {
-                        input.copyTo(out)
-                    }
-                }
-            } ?: throw IllegalStateException("无法打开输出位置")
-            toast(R.string.setup_toast_export_ok)
-        } catch (e: Exception) {
-            toast(R.string.setup_toast_export_fail)
-        }
-    }
-
+    /** 单个应用隐藏/恢复(手动输入包名场景) */
     fun hide(pkg: String) = setHidden(pkg, hidden = true)
 
     fun unhide(pkg: String) = setHidden(pkg, hidden = false)
 
-    /** 读取已安装应用:用户应用在前、系统应用在后,均按名称排序;排除本应用(自身不可隐藏) */
-    fun installedApps(): List<AppInfo> = try {
-        val pm = getApplication<Application>().packageManager
-        pm.getInstalledApplications(0)
-            .filter { it.packageName != getApplication<Application>().packageName }
-            .map {
-                AppInfo(
-                    packageName = it.packageName,
-                    label = it.loadLabel(pm).toString(),
-                    isSystem = (it.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+    /** 批量隐藏/恢复已选应用 */
+    fun hideSelected() = batchSetHidden(hidden = true)
+
+    fun unhideSelected() = batchSetHidden(hidden = false)
+
+    private fun batchSetHidden(hidden: Boolean) {
+        val app = getApplication<Application>()
+        val targets = selection.toList()
+        if (targets.isEmpty()) return
+        when {
+            !adminActive -> toast(R.string.toast_need_admin)
+            !deviceOwner -> toast(R.string.toast_need_device_owner)
+
+            else -> {
+                var ok = 0
+                var fail = 0
+                for (pkg in targets) {
+                    if (pkg == app.packageName) {
+                        fail++
+                        continue
+                    }
+                    try {
+                        dpm.setApplicationHidden(admin, pkg, hidden)
+                        updateHiddenSet(pkg, hidden)
+                        ok++
+                    } catch (e: Exception) {
+                        fail++
+                    }
+                }
+                clearSelection()
+                toast(
+                    if (hidden) R.string.toast_batch_hide else R.string.toast_batch_unhide,
+                    ok,
+                    fail,
                 )
             }
-            .sortedWith(compareBy({ !it.isSystem }, { it.label.lowercase() }))
-    } catch (e: Exception) {
-        emptyList()
+        }
+        refresh()
     }
 
     private fun setHidden(pkg: String, hidden: Boolean) {
@@ -136,9 +147,7 @@ class BlacklistViewModel(application: Application) : AndroidViewModel(applicatio
         when {
             pkg.isEmpty() -> toast(R.string.toast_pkg_empty)
             pkg == app.packageName -> toast(R.string.toast_self_hide_denied)
-            !adminActive -> {
-                toast(R.string.toast_need_admin)
-            }
+            !adminActive -> toast(R.string.toast_need_admin)
 
             else -> try {
                 dpm.setApplicationHidden(admin, pkg, hidden)
@@ -150,47 +159,39 @@ class BlacklistViewModel(application: Application) : AndroidViewModel(applicatio
                 toast(R.string.toast_op_failed, e.message ?: e.javaClass.simpleName)
             }
         }
-        updateTargetStatus()
-        refreshHiddenList()
+        refresh()
     }
 
-    /** 实时显示目标应用的安装与隐藏状态 */
-    private fun updateTargetStatus() {
-        val app = getApplication<Application>()
-        val pkg = pkgInput.trim()
-        if (pkg.isEmpty()) {
-            targetStatus = TargetStatus.Empty
-            return
-        }
-        val installed = try {
-            app.packageManager.getPackageInfo(pkg, 0)
-            true
-        } catch (e: PackageManager.NameNotFoundException) {
-            false
-        }
-        if (!installed) {
-            targetStatus = TargetStatus.NotInstalled(pkg)
-            return
-        }
-        targetStatus = if (adminActive && deviceOwner) {
-            try {
-                if (dpm.isApplicationHidden(admin, pkg)) TargetStatus.Hidden else TargetStatus.Shown
-            } catch (e: Exception) {
-                TargetStatus.Unknown
+    /**
+     * 重建统一应用列表:已安装应用 + 仅存在于本地隐藏记录中的包(已卸载但被预设置隐藏)。
+     * 包含数百个应用的标签读取与 DPM 状态查询,放到后台线程执行。
+     */
+    private fun rebuildApps() {
+        loading = true
+        viewModelScope.launch(Dispatchers.Default) {
+            val list = computeApps()
+            withContext(Dispatchers.Main) {
+                apps = list
+                loading = false
             }
-        } else {
-            TargetStatus.Unknown
         }
     }
 
-    /** 刷新"已隐藏应用"列表;记录来自本地 SharedPreferences,并尽量实时验证 */
-    private fun refreshHiddenList() {
+    private fun computeApps(): List<AppInfo> {
         val app = getApplication<Application>()
-        val saved = prefs.getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
+        val pm = app.packageManager
         val canVerify = adminActive && deviceOwner
-        hiddenApps = saved.map { pkg ->
+        val saved = prefs.getStringSet(KEY_HIDDEN, emptySet()).orEmpty()
+
+        val installed = pm.getInstalledApplications(0)
+        val installedPkgs = installed.mapTo(mutableSetOf()) { it.packageName }
+
+        val result = mutableListOf<AppInfo>()
+        for (info in installed) {
+            val pkg = info.packageName
+            if (pkg == app.packageName) continue
             val label = try {
-                app.packageManager.getApplicationInfo(pkg, 0).loadLabel(app.packageManager).toString()
+                info.loadLabel(pm).toString()
             } catch (e: Exception) {
                 pkg
             }
@@ -203,13 +204,43 @@ class BlacklistViewModel(application: Application) : AndroidViewModel(applicatio
             } else {
                 null
             }
-            AppInfo(
+            result += AppInfo(
                 packageName = pkg,
                 label = label,
-                isHidden = hidden ?: true,
-                hiddenVerified = hidden != null,
+                isSystem = (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+                installed = true,
+                hidden = hidden,
             )
-        }.sortedBy { it.label.lowercase() }
+        }
+
+        // 仅有本地隐藏记录、当前未安装的包(隐藏状态会在安装后自动生效)
+        for (pkg in saved) {
+            if (pkg == app.packageName || pkg in installedPkgs) continue
+            val hidden = if (canVerify) {
+                try {
+                    dpm.isApplicationHidden(admin, pkg)
+                } catch (e: Exception) {
+                    null
+                }
+            } else {
+                true
+            }
+            result += AppInfo(
+                packageName = pkg,
+                label = pkg,
+                isSystem = false,
+                installed = false,
+                hidden = hidden,
+            )
+        }
+
+        return result.sortedWith(
+            compareBy(
+                { it.installed },                    // 未安装的隐藏记录排最前(需要关注)
+                { it.isSystem },                     // 用户应用在前
+                { it.label.lowercase() },
+            )
+        )
     }
 
     private fun updateHiddenSet(pkg: String, hidden: Boolean) {

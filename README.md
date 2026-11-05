@@ -6,12 +6,10 @@
 
 ## 功能特性
 
-- **初始化向导(Shizuku 风格)**:首次打开自动进入分步授权引导——激活管理员 → 导出/复制电脑端命令 → 自动检测授权结果,通过后自动进入主界面
-- **一键授权脚本**:内置 Windows(.bat)与 macOS/Linux/Git Bash(.sh)脚本,应用内可直接导出;脚本自动检查 adb、设备连接、已装所有者,失败时用中文说明原因和解决办法
-- **隐藏 / 恢复应用**:输入包名或从应用列表中选择,一键隐藏(禁用);已隐藏的应用一键恢复
-- **实时状态查询**:显示目标应用的安装状态与隐藏状态(隐藏中 / 正常显示 / 未知)
-- **应用选择器**:内置可搜索的已安装应用列表,无需手动输入包名;用户应用在前,系统应用在后
-- **已隐藏应用列表**:集中管理所有已隐藏的应用,逐个恢复,并实时验证实际隐藏状态
+- **应用列表主界面**:全部应用以「名称 + 包名」两行列出,支持搜索、筛选(全部 / 隐藏中 / 显示中),状态徽章实时标注
+- **多选批量操作**:勾选多个应用后一键批量隐藏 / 批量恢复;对已卸载但预设了隐藏的包同样可管理
+- **初始化向导(Shizuku 风格)**:首次打开自动进入分步授权引导——激活管理员 → 复制电脑端命令 → 自动检测授权结果,通过后自动进入主界面
+- **实时状态查询**:每个应用实时显示隐藏状态(隐藏中 / 显示中),数据来自 `DevicePolicyManager` 实时校验
 - **权限状态面板**:直观显示设备管理员与设备所有者的授权状态,并提供应用内授权 / 停用入口;应用回到前台时自动重新检测
 - **Material 3 界面**:Jetpack Compose 构建,支持 Android 12+ 动态取色与深色模式
 
@@ -86,16 +84,7 @@ git push origin v1.3
 
 ### 2. 设置设备所有者(隐藏功能的前提)
 
-设备连接电脑并开启 USB 调试后,任选一种方式:
-
-**方式一(推荐):一键脚本** —— 在应用初始化向导中点击「导出脚本」,保存后运行:
-
-- Windows:双击 `setup-device-owner.bat`
-- macOS / Linux / Git Bash:`chmod +x setup-device-owner.sh && ./setup-device-owner.sh`
-
-脚本会自动检查 adb、设备连接、应用安装情况,失败时用中文提示原因与解决办法;也可以从仓库直接获取脚本:`app/src/main/assets/scripts/`。
-
-**方式二:手动执行命令**:
+设备连接电脑并开启 USB 调试后,在初始化向导第 2 步**点击「复制命令」**,粘贴到电脑终端执行(命令中的包名会随 fork 自动变化):
 
 ```bash
 adb shell dpm set-device-owner cc.lycstar.admin/.MyAdmin
@@ -134,16 +123,17 @@ adb shell dpm set-device-owner cc.lycstar.admin/.MyAdmin
 
 ### 3. 隐藏应用
 
-- 在「目标应用」卡片中输入包名,或点击「选择应用」从列表挑选;
-- 界面会实时显示该应用的安装与隐藏状态;
-- 点击「禁用(隐藏)」即可从桌面隐藏该应用;点击「恢复(取消隐藏)」还原;
-- 所有已隐藏应用集中显示在下方列表,可逐个恢复。
+- 主界面即应用列表,每行显示「应用名称 + 包名」;
+- 通过搜索框或筛选 Chips(全部 / 隐藏中 / 显示中)快速定位目标;
+- **单个操作**:点击行左侧勾选框选中 → 底部操作栏点「禁用(隐藏)」或「恢复(取消隐藏)」;
+- **批量操作**:连续勾选多个应用,底部操作栏一次批量处理;
+- 右上角「⋮」菜单可手动输入包名(用于隐藏尚未安装的包,隐藏状态会在安装后自动生效)。
 
 > ⚠️ **不要隐藏本应用自身**(应用已内置拦截),否则你将无法再打开它来恢复其他应用。若不小心操作导致无法恢复:重新安装本应用不会丢失记录,重新设置 device owner 后即可继续;最后手段是恢复出厂。
 
 ### 卸载说明
 
-正常顺序:先在应用内「停用管理员权限」→ 再卸载。若已成为设备所有者,可导出或直接运行内置的 `remove-admin.sh` / `remove-admin.bat` 脚本,其内容等价于:
+正常顺序:先在应用内「停用管理员权限」(右上角 ⋮ 菜单)→ 再卸载。若已成为设备所有者,需要先执行:
 
 ```bash
 adb shell dpm remove-active-admin cc.lycstar.admin/.MyAdmin
@@ -153,7 +143,7 @@ adb shell dpm remove-active-admin cc.lycstar.admin/.MyAdmin
 
 ## Fork 后修改包名指南
 
-fork 后改成自己的包名只需四步(配置已集中到一处):
+fork 后改成自己的包名只需三步(配置已集中到一处):
 
 1. **改 `app/build.gradle.kts`** 顶部的:
 
@@ -161,13 +151,11 @@ fork 后改成自己的包名只需四步(配置已集中到一处):
    val appId = "cc.lycstar.admin"   // ← 改成你的包名,例如 com.yourname.blacklist
    ```
 
-   `namespace` 与 `applicationId` 都引用了这个变量,无需改第二处。
+   `namespace` 与 `applicationId` 都引用了这个变量,无需改第二处;初始化向导中的 adb 命令也会自动跟随新包名。
 
 2. **移动源码目录**:`app/src/main/java/cc/lycstar/admin/` 整体移动到与你的包名对应的路径(例如 `com/yourname/blacklist/`),并把每个 `.kt` 文件的 `package cc.lycstar.admin` 改成新包名。
 
-3. **改内置脚本中的包名**:`app/src/main/assets/scripts/` 下四个脚本的 `PKG` 变量(`.sh` 和 `.bat` 都要改),初始化向导导出的脚本就来自这里。
-
-4. **改 adb 命令中的组件名**:上文所有 `cc.lycstar.admin/.MyAdmin` 相应替换为新包名(`.MyAdmin` 部分不变)。
+3. **改 adb 命令中的组件名**:上文所有 `cc.lycstar.admin/.MyAdmin` 相应替换为新包名(`.MyAdmin` 部分不变)。
 
 > AndroidManifest 中 receiver 写的是相对类名 `.MyAdmin`,会自动跟随新的 `namespace`,不需要改 Manifest。
 >
@@ -184,21 +172,16 @@ fork 后改成自己的包名只需四步(配置已集中到一处):
 ```
 app/src/main/
 ├── AndroidManifest.xml              # 应用声明、QUERY_ALL_PACKAGES 权限、设备管理员 receiver
-├── assets/scripts/                  # 电脑端一键脚本(应用内可导出)
-│   ├── setup-device-owner.sh        #   设备所有者授权 (macOS/Linux/Git Bash)
-│   ├── setup-device-owner.bat       #   设备所有者授权 (Windows)
-│   ├── remove-admin.sh              #   移除管理员 (macOS/Linux/Git Bash)
-│   └── remove-admin.bat             #   移除管理员 (Windows)
 ├── java/cc/lycstar/admin/
 │   ├── MainActivity.kt              # Compose 入口 + 管理员授权结果处理
-│   ├── BlacklistViewModel.kt        # 全部业务逻辑(DPM 调用、状态管理、本地记录、脚本导出)
+│   ├── BlacklistViewModel.kt        # 全部业务逻辑(DPM 调用、应用列表、多选批量、本地记录)
 │   ├── AppInfo.kt                   # 应用条目数据类
 │   ├── MyAdmin.kt                   # DeviceAdminReceiver(设备管理员回调)
 │   └── ui/
 │       ├── BlacklistTheme.kt        # Material 3 主题(动态取色)
 │       ├── AppRoot.kt               # 根路由(初始化向导/主界面切换、回到前台自动检测)
-│       ├── SetupScreen.kt           # 初始化向导(分步授权、复制命令、导出脚本)
-│       └── BlacklistScreen.kt       # 主界面(权限卡片/目标应用/隐藏列表/选择对话框)
+│       ├── SetupScreen.kt           # 初始化向导(分步授权、复制命令、兼容性提示)
+│       └── BlacklistScreen.kt       # 主界面(应用列表/搜索筛选/多选批量/手动输入)
 └── res/
     ├── values/strings.xml           # 所有文案
     └── xml/device_admin_receiver.xml # 设备管理员策略声明
